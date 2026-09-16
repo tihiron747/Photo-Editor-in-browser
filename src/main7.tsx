@@ -1,0 +1,46 @@
+import React, { useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { Crop, Download, FlipHorizontal, FlipVertical, RotateCcw, RotateCw, Sparkles, UploadCloud } from 'lucide-react';
+import './styles.css';
+import './extra.css';
+import './mobile.css';
+import './integrated.css';
+
+type Tool = 'merge' | 'resize' | 'editor';
+const presets = [['正方形', 1080, 1080], ['Instagram', 1080, 1350], ['ストーリー', 1080, 1920], ['YouTube', 1280, 720], ['X投稿', 1200, 675]] as const;
+const imageUrl = (file: File) => URL.createObjectURL(file);
+const loadImage = (url: string) => new Promise<HTMLImageElement>((resolve, reject) => { const image = new Image(); image.onload = () => resolve(image); image.onerror = reject; image.src = url; });
+
+function Drop({ accept, multiple = false, onFiles, label }: { accept: string; multiple?: boolean; onFiles: (files: File[]) => void; label: string }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const pick = (files: FileList | File[]) => onFiles(Array.from(files));
+  return <div className="drop compact" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); pick(e.dataTransfer.files); }} onClick={() => ref.current?.click()}>
+    <UploadCloud /><b>{label}</b><input ref={ref} hidden type="file" accept={accept} multiple={multiple} onChange={e => e.target.files && pick(e.target.files)} />
+  </div>;
+}
+
+function Merge() {
+  const [files, setFiles] = useState<string[]>([]); const [direction, setDirection] = useState<'vertical' | 'horizontal'>('vertical'); const [gap, setGap] = useState(0);
+  const add = (items: File[]) => setFiles(current => [...current, ...items.filter(file => file.type.startsWith('image/')).map(imageUrl)]);
+  const save = async () => { if (!files.length) return; const images = await Promise.all(files.map(loadImage)); const vertical = direction === 'vertical'; const width = vertical ? Math.max(...images.map(i => i.width)) : images.reduce((n, i) => n + i.width, 0) + gap * (images.length - 1); const height = vertical ? images.reduce((n, i) => n + i.height, 0) + gap * (images.length - 1) : Math.max(...images.map(i => i.height)); const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; const ctx = canvas.getContext('2d')!; let offset = 0; images.forEach(image => { ctx.drawImage(image, vertical ? (width - image.width) / 2 : offset, vertical ? offset : (height - image.height) / 2); offset += (vertical ? image.height : image.width) + gap; }); download(canvas.toDataURL('image/png'), 'merged.png'); };
+  return <section className="tool-card"><h2>画像結合</h2><p className="hint">複数の画像を縦または横に並べて1枚にします。</p><div className="settings"><div className="segmented"><button className={direction === 'vertical' ? 'selected' : ''} onClick={() => setDirection('vertical')}>縦方向</button><button className={direction === 'horizontal' ? 'selected' : ''} onClick={() => setDirection('horizontal')}>横方向</button></div><label>画像間の間隔：{gap}px<input className="range" type="range" min="0" max="100" value={gap} onChange={e => setGap(+e.target.value)} /></label></div><Drop accept="image/*" multiple onFiles={add} label="画像をドロップまたは選択" />{files.length > 0 && <><div className="merge-grid">{files.map(url => <img src={url} key={url} />)}</div><button className="download full" onClick={save}><Download />1枚に結合して保存</button></>}</section>;
+}
+
+function Resize() {
+  const [src, setSrc] = useState(''); const [width, setWidth] = useState(0); const [height, setHeight] = useState(0); const [format, setFormat] = useState('image/png');
+  const add = async (files: File[]) => { const file = files.find(item => item.type.startsWith('image/')); if (!file) return; const url = imageUrl(file); const image = await loadImage(url); setSrc(url); setWidth(image.width); setHeight(image.height); };
+  const save = async () => { const image = await loadImage(src); const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; canvas.getContext('2d')!.drawImage(image, 0, 0, width, height); download(canvas.toDataURL(format, .9), `resized.${format === 'image/jpeg' ? 'jpg' : format === 'image/webp' ? 'webp' : 'png'}`); };
+  return <section className="tool-card"><h2>画像リサイズ</h2><p className="hint">用途に合わせたサイズへ変更できます。</p><Drop accept="image/*" onFiles={add} label={src ? '画像を変更' : '画像をドロップまたは選択'} />{src && <><div className="preset-row">{presets.map(([name, w, h]) => <button key={name} onClick={() => { setWidth(w); setHeight(h); }}>{name}<small>{w}×{h}</small></button>)}</div><div className="dimensions"><label>幅<input type="number" min="1" value={width} onChange={e => setWidth(+e.target.value)} /></label><label>高さ<input type="number" min="1" value={height} onChange={e => setHeight(+e.target.value)} /></label></div><label>保存形式<select value={format} onChange={e => setFormat(e.target.value)}><option value="image/png">PNG</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option></select></label><button className="download full" onClick={save}><Download />リサイズして保存</button></>}</section>;
+}
+
+function Editor() {
+  const [src, setSrc] = useState(''); const [format, setFormat] = useState('image/jpeg'); const [quality, setQuality] = useState(.85); const [rotation, setRotation] = useState(0); const [flipX, setFlipX] = useState(false); const [flipY, setFlipY] = useState(false); const [crop, setCrop] = useState(false);
+  const add = (files: File[]) => { const file = files.find(item => item.type.startsWith('image/')); if (file) setSrc(imageUrl(file)); };
+  const save = async () => { if (!src) return; const image = await loadImage(src); const side = crop ? Math.min(image.width, image.height) : 0; const sw = crop ? side : image.width; const sh = crop ? side : image.height; const canvas = document.createElement('canvas'); const quarter = rotation % 180 !== 0; canvas.width = quarter ? sh : sw; canvas.height = quarter ? sw : sh; const ctx = canvas.getContext('2d')!; ctx.translate(canvas.width / 2, canvas.height / 2); ctx.rotate(rotation * Math.PI / 180); ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1); ctx.drawImage(image, crop ? (side - image.width) / 2 : -image.width / 2, crop ? (side - image.height) / 2 : -image.height / 2); download(canvas.toDataURL(format, quality), `edited.${format === 'image/jpeg' ? 'jpg' : format === 'image/webp' ? 'webp' : 'png'}`); };
+  return <section className="tool-card"><h2>画像編集</h2><p className="hint">回転・反転・中央トリミング・圧縮をブラウザ内で行います。</p><Drop accept="image/*" onFiles={add} label={src ? '画像を変更' : '画像をドロップまたは選択'} />{src && <><img className="editor-preview" src={src} style={{ transform: `rotate(${rotation}deg) scale(${flipX ? -1 : 1},${flipY ? -1 : 1})` }} /><div className="editor-controls"><label>保存形式<select value={format} onChange={e => setFormat(e.target.value)}><option value="image/jpeg">JPEG</option><option value="image/png">PNG</option><option value="image/webp">WebP</option></select></label><label>品質：{Math.round(quality * 100)}%<input className="range" type="range" min=".1" max="1" step=".05" value={quality} onChange={e => setQuality(+e.target.value)} /></label><div className="action-grid"><button onClick={() => setRotation((rotation + 270) % 360)}><RotateCcw />左回転</button><button onClick={() => setRotation((rotation + 90) % 360)}><RotateCw />右回転</button><button onClick={() => setFlipX(v => !v)}><FlipHorizontal />左右反転</button><button onClick={() => setFlipY(v => !v)}><FlipVertical />上下反転</button><button className={crop ? 'selected' : ''} onClick={() => setCrop(v => !v)}><Crop />中央トリミング</button></div></div><button className="download full" onClick={save}><Download />編集後の画像を保存</button></>}</section>;
+}
+
+function download(data: string, name: string) { const a = document.createElement('a'); a.href = data; a.download = name; a.click(); }
+function pathFor(tool: Tool) { return tool === 'editor' ? '/image-tools/' : tool === 'resize' ? '/image-resize/' : '/image-merge/'; }
+function App() { const initial = location.pathname.includes('image-tools') ? 'editor' : location.pathname.includes('image-resize') ? 'resize' : 'merge' as Tool; const [tool, setTool] = useState<Tool>(initial); const go = (next: Tool) => { setTool(next); history.pushState({}, '', pathFor(next)); }; return <><header><div className="brand"><span className="mark"><Sparkles size={18} /></span>toolbox</div><nav><button className={tool === 'merge' ? 'active' : ''} onClick={() => go('merge')}>画像結合</button><button className={tool === 'resize' ? 'active' : ''} onClick={() => go('resize')}>画像リサイズ</button><button className={tool === 'editor' ? 'active' : ''} onClick={() => go('editor')}>画像編集</button></nav></header><main><h1>画像と動画を、かんたん編集。</h1><p className="lead">ファイルは外部に送信せず、ブラウザ内で処理します。</p><section className="privacy-hero"><Sparkles /><strong>画像・動画はサーバーに保存されません</strong></section>{tool === 'merge' ? <Merge /> : tool === 'resize' ? <Resize /> : <Editor />}</main></>; }
+createRoot(document.getElementById('root')!).render(<App />);
