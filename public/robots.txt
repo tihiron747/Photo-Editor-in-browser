@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://photo-editor-in-browser.pages.dev/sitemap.xml
