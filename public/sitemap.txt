@@ -1,0 +1,12 @@
+https://photo-editor-in-browser.pages.dev/
+https://photo-editor-in-browser.pages.dev/image-merge/
+https://photo-editor-in-browser.pages.dev/image-resize/
+https://photo-editor-in-browser.pages.dev/image-tools/
+https://photo-editor-in-browser.pages.dev/image-compress/
+https://photo-editor-in-browser.pages.dev/about/
+https://photo-editor-in-browser.pages.dev/terms/
+https://photo-editor-in-browser.pages.dev/privacy/
+https://photo-editor-in-browser.pages.dev/en/
+https://photo-editor-in-browser.pages.dev/en/image-merge/
+https://photo-editor-in-browser.pages.dev/en/image-resize/
+https://photo-editor-in-browser.pages.dev/en/video-trim/
