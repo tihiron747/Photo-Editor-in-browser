@@ -2,5 +2,9 @@
   Content-Type: application/xml; charset=UTF-8
   Cache-Control: no-cache
 
+/sitemap-main.xml
+  Content-Type: application/xml; charset=UTF-8
+  Cache-Control: no-cache
+
 /robots.txt
   Content-Type: text/plain; charset=UTF-8
