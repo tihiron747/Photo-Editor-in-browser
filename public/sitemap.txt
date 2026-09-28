@@ -9,4 +9,3 @@ https://photo-editor-in-browser.pages.dev/privacy/
 https://photo-editor-in-browser.pages.dev/en/
 https://photo-editor-in-browser.pages.dev/en/image-merge/
 https://photo-editor-in-browser.pages.dev/en/image-resize/
-https://photo-editor-in-browser.pages.dev/en/video-trim/

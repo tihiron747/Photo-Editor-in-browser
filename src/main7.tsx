@@ -46,5 +46,24 @@ function Editor() {
 function download(data: string, name: string) { const a = document.createElement('a'); a.href = data; a.download = name; a.click(); }
 function pathFor(page: Page) { return page === 'editor' ? '/image-tools/' : page === 'resize' ? '/image-resize/' : page === 'merge' ? '/image-merge/' : `/${page}/`; }
 function Info({ page, go }: { page: 'about' | 'terms' | 'privacy'; go: (page: Page) => void }) { const content = page === 'about' ? ['サイトについて', 'toolboxは、画像結合・画像リサイズ・画像圧縮・画像編集をブラウザ内で利用できる無料の便利ツール集です。'] : page === 'terms' ? ['利用規約', '本サービスは無料で提供しています。利用者は自身が権利を持つ画像・動画のみを処理してください。処理は利用者の端末内で行われ、当サイトがファイルを保存することはありません。'] : ['プライバシーポリシー', '画像・動画はサーバーへアップロード・保存されません。ファイル処理は利用者の端末上のブラウザ内で行われます。当サイトではGoogle AdSenseによる広告を掲載し、広告配信のためCookieが使用される場合があります。']; return <section className="info-card"><p className="eyebrow">TOOLBOX / INFORMATION</p><h2>{content[0]}</h2><p>{content[1]}</p><button className="download" onClick={() => go('merge')}>ツールへ戻る</button></section>; }
-function App() { const queryTool = new URLSearchParams(location.search).get('tool'); const initial: Page = queryTool === 'editor' || location.pathname.includes('image-tools') ? 'editor' : queryTool === 'resize' || location.pathname.includes('image-resize') ? 'resize' : queryTool === 'merge' ? 'merge' : location.pathname.includes('about') ? 'about' : location.pathname.includes('terms') ? 'terms' : location.pathname.includes('privacy') ? 'privacy' : 'merge'; const [page, setPage] = useState<Page>(initial); const go = (next: Page) => { setPage(next); history.pushState({}, '', pathFor(next)); }; const info = page === 'about' || page === 'terms' || page === 'privacy'; return <><header><div className="brand"><span className="mark"><Sparkles size={18} /></span>toolbox</div><nav><button className={page === 'merge' ? 'active' : ''} onClick={() => go('merge')}>画像結合</button><button className={page === 'resize' ? 'active' : ''} onClick={() => go('resize')}>画像リサイズ</button><button className={page === 'editor' ? 'active' : ''} onClick={() => go('editor')}>画像編集</button></nav></header><main><h1>画像と動画を、かんたん編集。</h1><p className="lead">ファイルは外部に送信せず、ブラウザ内で処理します。</p>{info ? <Info page={page} go={go} /> : <><section className="privacy-hero"><Sparkles /><strong>画像・動画はサーバーに保存されません</strong></section>{page === 'merge' ? <Merge /> : page === 'resize' ? <Resize /> : <Editor />}</>}</main><footer><button onClick={() => go('about')}>サイトについて</button><button onClick={() => go('terms')}>利用規約</button><button onClick={() => go('privacy')}>プライバシーポリシー</button></footer></>; }
+function App() {
+  const readPage = (): Page => {
+    const path = location.pathname.replace(/\/$/, '');
+    const query = new URLSearchParams(location.search).get('tool');
+    if (path === '/image-compress' || path === '/image-tools' || query === 'editor') return 'editor';
+    if (path === '/image-resize' || query === 'resize') return 'resize';
+    if (path === '/about') return 'about';
+    if (path === '/terms') return 'terms';
+    if (path === '/privacy') return 'privacy';
+    return 'merge';
+  };
+  const [page, setPage] = useState<Page>(readPage);
+  useEffect(() => { const sync = () => setPage(readPage()); window.addEventListener('popstate', sync); return () => window.removeEventListener('popstate', sync); }, []);
+  const go = (next: Page) => { history.pushState({}, '', pathFor(next)); setPage(next); };
+  const info = page === 'about' || page === 'terms' || page === 'privacy';
+  const labels: Record<Page,string> = {merge:'画像結合',resize:'画像リサイズ',editor:'画像編集・画像圧縮',about:'サイトについて',terms:'利用規約',privacy:'プライバシーポリシー'};
+  useEffect(() => { document.title = labels[page] + '｜toolbox'; }, [page]);
+  const link = (next: Page) => <a href={pathFor(next)} aria-current={page === next ? 'page' : undefined} onClick={e => { if(e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); go(next); }}>{labels[next]}</a>;
+  return <><header><div className="brand"><span className="mark"><Sparkles size={18}/></span>toolbox</div><nav>{link('merge')}{link('resize')}{link('editor')}<a href="/image-compress/">画像圧縮</a></nav></header><main><h1>{labels[page]}</h1><p className="lead">ファイルは外部に送信せず、ブラウザ内で処理します。</p>{info ? <Info page={page} go={go}/> : <><section className="privacy-hero"><Sparkles/><strong>画像はサーバーに保存されません</strong></section>{page === 'merge' ? <Merge/> : page === 'resize' ? <Resize/> : <Editor/>}</>}</main><footer>{link('about')}{link('terms')}{link('privacy')}</footer></>;
+}
 createRoot(document.getElementById('root')!).render(<App />);
